@@ -2,7 +2,7 @@ export type Session = {
   userId: number;
 };
 
-interface SessionManager {
+export interface SessionManager {
   /** New creates a new session for the user */
   create: (userId: number) => number;
 

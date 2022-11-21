@@ -1,1 +1,6 @@
-{ "dependencies": { "bun-types": "^0.2.2" } }
+{
+  "dependencies": { "bun-types": "^0.2.2" },
+  "devDependencies": {
+    "prettier": "^2.7.1"
+  }
+}
