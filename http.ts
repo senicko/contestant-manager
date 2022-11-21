@@ -19,9 +19,9 @@ export type Route =
  * @returns boolean meaning if it is coorrect or not
  */
 // TODO: This says that / is the same as /contestants
-const comparePath = (path: string, template: string): boolean => {
+const comparePath = (path: string, template: string) => {
   const pathElements = path.split("/");
-  const templateElements = path.split("/");
+  const templateElements = template.split("/");
 
   if (pathElements.length !== templateElements.length) return false;
 

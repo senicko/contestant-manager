@@ -1,12 +1,20 @@
 import { serve } from "bun";
 import { Database } from "bun:sqlite";
 import { resolver, Route } from "./http";
+import { setCookie } from "./httputil";
+import { InMemorySessionManager } from "./session";
 
 const db = new Database("db.sqlite");
 
 type Contestant = {
   id: number;
   name: string;
+};
+
+type User = {
+  id: number;
+  name: string;
+  password: string;
 };
 
 db.run(`
@@ -16,7 +24,45 @@ db.run(`
   );
 `);
 
+db.run(`
+  CREATE TABLE IF NOT EXISTS trainers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    password TEXT NOT NULL
+  );
+`);
+
+const sessionManager = new InMemorySessionManager();
+
 const routes: Route[] = [
+  // User
+  {
+    path: "/user",
+    POST: async (request) => {
+      const { name, password } = await request.json<Omit<User, "id">>();
+
+      const user: User = db
+        .query(
+          "INSERT INTO trainers (name, password) VALUES (?, ?) RETURNING *"
+        )
+        .get(name, password);
+
+      delete user.password;
+
+      const response = Response.json(user);
+
+      setCookie(response.headers, {
+        name: "sid",
+        value: sessionManager.create(user.id).toString(),
+        expire: new Date(new Date().getTime() + 1000 * 60 * 60 * 24 * 7),
+        httpOnly: true,
+      });
+
+      return response;
+    },
+  },
+
+  // Contestants
   {
     path: "/contestants",
     GET: () => {
@@ -27,7 +73,7 @@ const routes: Route[] = [
       return Response.json(contestants);
     },
     POST: async (request) => {
-      const { name } = await request.json<Pick<Contestant, "name">>();
+      const { name } = await request.json<Omit<Contestant, "id">>();
 
       const contestant: Contestant = db
         .query("INSERT INTO contestants (name) VALUES (?) RETURNING *")
@@ -57,6 +103,7 @@ const routes: Route[] = [
 ];
 
 serve({
+  port: 3000,
   fetch: (request) => {
     return resolver(request, routes);
   },

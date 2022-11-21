@@ -3,11 +3,14 @@ export type Session = {
 };
 
 interface SessionManager {
-  /** new creates a new session for the user */
-  new: (userId: number) => void;
+  /** New creates a new session for the user */
+  create: (userId: number) => number;
 
-  /** get returns the session */
-  get: (sessionId: number) => void;
+  /** Get returns the session */
+  get: (sessionId: number) => Session;
+
+  /** Removes the session */
+  remove: (sessionId: number) => void;
 }
 
 /**
@@ -17,11 +20,19 @@ interface SessionManager {
 export class InMemorySessionManager implements SessionManager {
   private sessions = new Map<number, Session>();
 
-  new(userId: number) {
-    this.sessions.set(this.sessions.size, { userId });
+  create(userId: number): number {
+    const sessionId = this.sessions.size;
+    this.sessions.set(sessionId, { userId });
+    return sessionId;
   }
 
   get(sessionId: number): Session {
     return this.sessions.get(sessionId);
   }
+
+  remove(sessionId: number) {
+    this.sessions.delete(sessionId);
+  }
+
+  createCookie: (session: Session) => {};
 }
