@@ -5,7 +5,7 @@ export type Method = "GET" | "POST" | "PUT" | "DELETE";
 export type Handler = (
   request: Request,
   params: Record<string, string>
-) => Response | Promise<Response>;
+) => Promise<Response>;
 
 export type Route =
   | {
@@ -66,8 +66,32 @@ export const resolver = (request: Request, routes: Route[]): Response => {
 
   const route = routes.find((route) => comparePath(pathname, route.path));
   const handler = route?.[request.method];
+
   if (!handler) return new Response(STATUS_CODES[403], { status: 404 });
 
   const params = getPathParams(pathname, route.path);
   return handler(request, params);
+};
+
+/**
+ * logs incoming requests to the console.
+ * @param request incoming request
+ */
+export const log = (request: Request) =>
+  console.log(`${request.method} ${request.url}`);
+
+/**
+ * parseCookies parses cookie header and transforms it into a string record.
+ * @param request incoming request
+ */
+export const parseCookies = (request: Request): Record<string, string> => {
+  const cookieHeader = request.headers.get("cookie");
+
+  if (!cookieHeader) return {};
+
+  return cookieHeader.split(";").reduce((cookies, cookie) => {
+    const [name, value] = cookie.split("=");
+    cookies[name] = value;
+    return cookies;
+  }, {});
 };

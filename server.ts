@@ -1,6 +1,6 @@
 import { serve } from "bun";
 import { Database } from "bun:sqlite";
-import { resolver, Route } from "./http";
+import { log, resolver, Route } from "./http";
 import { authHandlers } from "./auth";
 import { InMemorySessionManager } from "./session";
 import { contestantsHandlers } from "./contestants";
@@ -25,6 +25,14 @@ db.run(`
 
 const sessionManager = new InMemorySessionManager();
 
+const corsHeaders: HeadersInit = {
+  Connection: "keep-alive",
+  "Access-Control-Allow-Origin": "http://localhost:4200",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE",
+  "Access-Control-Allow-Headers": "content-type",
+  "Access-Control-Allow-Credentials": "true",
+} as const;
+
 const routes: Route[] = [
   ...contestantsHandlers(db),
   ...authHandlers(db, sessionManager),
@@ -32,10 +40,25 @@ const routes: Route[] = [
 
 serve({
   port: 3000,
-  fetch: (request) => {
-    return resolver(request, routes);
+  fetch: async (request) => {
+    log(request);
+
+    let response: Response;
+
+    if (request.method === "OPTIONS") {
+      response = new Response("", { headers: corsHeaders });
+    } else {
+      response = await resolver(request, routes);
+      Object.entries(corsHeaders).forEach(([key, value]) =>
+        response.headers.set(key, value)
+      );
+    }
+
+    return response;
   },
   error: (error: Error) => {
+    console.log(error);
+
     return new Response(`Error! ${error.toString()}`, {
       status: 500,
     });

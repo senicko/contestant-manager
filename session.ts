@@ -5,10 +5,8 @@ export type Session = {
 export interface SessionManager {
   /** New creates a new session for the user */
   create: (userId: number) => number;
-
   /** Get returns the session */
   get: (sessionId: number) => Session;
-
   /** Removes the session */
   remove: (sessionId: number) => void;
 }
@@ -26,7 +24,7 @@ export class InMemorySessionManager implements SessionManager {
     return sessionId;
   }
 
-  get(sessionId: number): Session {
+  get(sessionId: number): Session | undefined {
     return this.sessions.get(sessionId);
   }
 

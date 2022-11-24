@@ -1,5 +1,5 @@
 import Database from "bun:sqlite";
-import { Route } from "./http";
+import { parseCookies, Route } from "./http";
 import { setCookie } from "./httputil";
 import { SessionManager } from "./session";
 
@@ -77,6 +77,23 @@ export const authHandlers = (
       });
 
       return response;
+    },
+  },
+  {
+    path: "/me",
+    GET: async (request) => {
+      const { sid } = parseCookies(request);
+
+      const userSession = sessionManager.get(parseInt(sid));
+      if (!userSession) return new Response("", { status: 401 });
+
+      const user: User | null = db
+        .query("SELECT * FROM trainers WHERE id = ?")
+        .get(userSession.userId);
+
+      if (!user) return new Response("", { status: 500 });
+
+      return Response.json(user);
     },
   },
 ];
