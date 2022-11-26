@@ -34,15 +34,13 @@ const corsHeaders: HeadersInit = {
 } as const;
 
 const routes: Route[] = [
-  ...contestantsHandlers(db),
+  ...contestantsHandlers(db, sessionManager),
   ...authHandlers(db, sessionManager),
 ];
 
 serve({
   port: 3000,
   fetch: async (request) => {
-    log(request);
-
     let response: Response;
 
     if (request.method === "OPTIONS") {
@@ -54,6 +52,7 @@ serve({
       );
     }
 
+    log(request, response);
     return response;
   },
   error: (error: Error) => {

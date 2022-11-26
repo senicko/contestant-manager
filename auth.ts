@@ -1,7 +1,6 @@
 import Database from "bun:sqlite";
-import { parseCookies, Route } from "./http";
-import { setCookie } from "./httputil";
-import { SessionManager } from "./session";
+import { Handler, parseCookies, Route, setCookie } from "./http";
+import { Session, SessionManager } from "./session";
 
 type User = {
   id: number;
@@ -81,19 +80,41 @@ export const authHandlers = (
   },
   {
     path: "/me",
-    GET: async (request) => {
-      const { sid } = parseCookies(request);
-
-      const userSession = sessionManager.get(parseInt(sid));
-      if (!userSession) return new Response("", { status: 401 });
-
-      const user: User | null = db
-        .query("SELECT * FROM trainers WHERE id = ?")
-        .get(userSession.userId);
-
-      if (!user) return new Response("", { status: 500 });
-
-      return Response.json(user);
-    },
+    GET: withAuth(
+      db,
+      sessionManager,
+      (user) => async () => Response.json(user)
+    ),
   },
 ];
+
+/**
+ * Checks if request is made by authenticated person
+ * @param db
+ * @param sessionManager
+ * @param handler next handler that will be called
+ * @returns
+ */
+export const withAuth =
+  (
+    db: Database,
+    sessionManager: SessionManager,
+    handler: (user: User) => Handler
+  ): Handler =>
+  async (request, params) => {
+    // Get session
+    const { sid } = parseCookies(request);
+    const userSession = sessionManager.get(parseInt(sid));
+
+    if (!userSession) return new Response("", { status: 401 });
+
+    // Get user
+    const user: User | null = db
+      .query("SELECT * FROM trainers WHERE id = ?")
+      .get(userSession.userId);
+
+    if (!user) return new Response("", { status: 500 });
+
+    // Call next handler
+    return handler(user)(request, params);
+  };

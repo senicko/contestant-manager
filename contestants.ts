@@ -1,5 +1,7 @@
 import { Route } from "./http";
 import { Database } from "bun:sqlite";
+import { withAuth } from "./auth";
+import { SessionManager } from "./session";
 
 type Contestant = {
   id: number;
@@ -11,19 +13,23 @@ type Contestant = {
  * @param db database connection
  * @returns routes for contestants
  */
-export const contestantsHandlers = (db: Database): Route[] => [
+export const contestantsHandlers = (
+  db: Database,
+  sessionManger: SessionManager
+): Route[] => [
   {
     path: "/contestants",
     // Get all contestants
-    GET: () => {
+    GET: withAuth(db, sessionManger, () => async () => {
       const contestants: Contestant[] = db
         .query("SELECT * FROM contestants")
         .all();
 
       return Response.json(contestants);
-    },
+    }),
+
     // Create contestants
-    POST: async (request) => {
+    POST: withAuth(db, sessionManger, () => async (request) => {
       const { name } = await request.json<Omit<Contestant, "id">>();
 
       const contestant: Contestant = db
@@ -31,12 +37,12 @@ export const contestantsHandlers = (db: Database): Route[] => [
         .get(name);
 
       return Response.json(contestant, { status: 201 });
-    },
+    }),
   },
   {
     path: "/contestants/:id",
     // Get specific contestant
-    GET: (_, params) => {
+    GET: withAuth(db, sessionManger, () => async (_, params) => {
       const { id } = params;
 
       const contestant = db
@@ -44,13 +50,15 @@ export const contestantsHandlers = (db: Database): Route[] => [
         .get(id);
 
       return Response.json(contestant);
-    },
+    }),
+
     // Delete contestant
-    DELETE: (_, params) => {
+    DELETE: withAuth(db, sessionManger, () => async (_, params) => {
       const { id } = params;
 
       db.run("DELETE FROM contestants WHERE id = ?", id);
+
       return new Response();
-    },
+    }),
   },
 ];

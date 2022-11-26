@@ -1,5 +1,16 @@
 import { STATUS_CODES } from "http";
 
+/**
+ * logs incoming requests to the console.
+ * @param request incoming request
+ */
+export const log = (request: Request, response: Response) =>
+  console.log(
+    `${request.method} ${request.url} -> ${response.status} ${
+      STATUS_CODES[response.status]
+    }`
+  );
+
 export type Method = "GET" | "POST" | "PUT" | "DELETE";
 
 export type Handler = (
@@ -73,12 +84,27 @@ export const resolver = (request: Request, routes: Route[]): Response => {
   return handler(request, params);
 };
 
+export type CookieOptions = {
+  name: string;
+  value: string;
+
+  expire?: Date;
+  httpOnly?: boolean;
+};
+
 /**
- * logs incoming requests to the console.
- * @param request incoming request
+ * setCookie adds a cookie to the request.
+ * @param headers request headers
+ * @param options cookie options
  */
-export const log = (request: Request) =>
-  console.log(`${request.method} ${request.url}`);
+export const setCookie = (headers: Headers, options: CookieOptions) => {
+  let cookie = `${options.name}=${options.value}`;
+
+  if (options.expire) cookie += `; Expires=${options.expire.toUTCString()}`;
+  if (options.httpOnly) cookie += "; HttpOnly";
+
+  headers.set("Set-Cookie", `${cookie};`);
+};
 
 /**
  * parseCookies parses cookie header and transforms it into a string record.
