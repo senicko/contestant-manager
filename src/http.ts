@@ -87,7 +87,6 @@ export const resolver = (request: Request, routes: Route[]): Response => {
 export type CookieOptions = {
   name: string;
   value: string;
-
   expire?: Date;
   httpOnly?: boolean;
 };
@@ -113,6 +112,8 @@ export const setCookie = (headers: Headers, options: CookieOptions) => {
 export const parseCookies = (request: Request): Record<string, string> => {
   const cookieHeader = request.headers.get("cookie");
 
+  console.log(cookieHeader);
+
   if (!cookieHeader) return {};
 
   return cookieHeader.split(";").reduce((cookies, cookie) => {
@@ -120,4 +121,13 @@ export const parseCookies = (request: Request): Record<string, string> => {
     cookies[name] = value;
     return cookies;
   }, {});
+};
+
+/**
+ * Helper thet logs an error and creates error response.
+ * @param status error response status
+ * @param message error message
+ */
+export const error = (status: number, message: string): Response => {
+  return Response.json({ message }, status);
 };

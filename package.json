@@ -1,5 +1,11 @@
 {
-  "dependencies": { "bun-types": "^0.2.2" },
+  "dependencies": {
+    "bun-types": "^0.2.2"
+  },
+  "scripts": {
+    "reset": "rm -rf db.sqlite db.sqlite-journal && bun ./src/server.ts",
+    "start": "bun ./src/server.ts"
+  },
   "devDependencies": {
     "prettier": "^2.7.1"
   }

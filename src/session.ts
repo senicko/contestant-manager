@@ -34,3 +34,5 @@ export class InMemorySessionManager implements SessionManager {
 
   createCookie: (session: Session) => {};
 }
+
+export const sessionManager = new InMemorySessionManager();
