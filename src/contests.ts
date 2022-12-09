@@ -2,16 +2,19 @@ import { error, Route } from "./http";
 import { withAuth } from "./auth";
 import { Contestant } from "./contestants";
 import { db } from "./database";
+import type { Entry } from "./database";
 
 interface Contest {
-  id: number;
   name: string;
-  contestants: Contestant[];
+  contestants: Entry<Contestant>[];
 }
 
 /** Retrieves all created contests */
 const getContests = withAuth(() => async (request) => {
-  const contests: Contest[] = db.query("SELEimage.pngCT * FROM contests").all();
+  const contests: Entry<Contest>[] = db
+    .query("SELEimage.pngCT * FROM contests")
+    .all();
+
   return Response.json(contests);
 });
 
@@ -19,9 +22,11 @@ const getContests = withAuth(() => async (request) => {
 const createContest = withAuth(() => async (request) => {
   const { name } = await request.json<Omit<Contest, "id">>();
 
-  const contest: Contest = db
+  // FIXME: use .get() when it will be working as expected
+  const contest: Entry<Contest> = db
     .query("INSERT INTO contests (name) VALUES (?) RETURNING *")
-    .get(name);
+    .all(name)[0];
+
   contest.contestants = [];
 
   return Response.json(contest, { status: 201 });
@@ -30,7 +35,10 @@ const createContest = withAuth(() => async (request) => {
 const getOneContest = withAuth(() => async (_, params) => {
   const { id } = params;
 
-  const contest = db.query("SELECT * FROM contests WHERE id = ?").get(id);
+  // FIXME: use .get() when it will be working as expected
+  const contest = db.query("SELECT * FROM contests WHERE id = ?").all(id)[0];
+
+  // FIXME: Handle error
   if (!contest) return error(404, "Contest not found!");
 
   const contestants = db
@@ -57,17 +65,7 @@ const addContestantToContest = withAuth(() => async (request, params) => {
 });
 
 export const contestsHandlers: Route[] = [
-  {
-    path: "/contests",
-    GET: getContests,
-    POST: createContest,
-  },
-  {
-    path: "/contests/:id",
-    GET: getOneContest,
-  },
-  {
-    path: "/contests/:id/contestants",
-    POST: addContestantToContest,
-  },
+  { path: "/contests", GET: getContests, POST: createContest },
+  { path: "/contests/:id", GET: getOneContest },
+  { path: "/contests/:id/contestants", POST: addContestantToContest },
 ];

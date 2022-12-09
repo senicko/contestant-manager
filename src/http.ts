@@ -1,4 +1,5 @@
 import { STATUS_CODES } from "http";
+import { isPrimitive } from "util";
 
 /**
  * logs incoming requests to the console.
@@ -78,7 +79,7 @@ export const resolver = (request: Request, routes: Route[]): Response => {
   const route = routes.find((route) => comparePath(pathname, route.path));
   const handler = route?.[request.method];
 
-  if (!handler) return new Response(STATUS_CODES[403], { status: 404 });
+  if (!handler) return new Response(STATUS_CODES[404], { status: 404 });
 
   const params = getPathParams(pathname, route.path);
   return handler(request, params);
@@ -121,6 +122,55 @@ export const parseCookies = (request: Request): Record<string, string> => {
     cookies[name] = value;
     return cookies;
   }, {});
+};
+
+/**
+ * Checks if request is a cors preflight request.
+ * @param request incoming request
+ * @returns boolean indicating if it is a cors preflight request or not
+ */
+const isCorsPreflight = (request: Request) => {
+  return (
+    request.method === "OPTIONS" &&
+    request.headers.has("Access-Control-Request-Method") &&
+    request.headers.has("Access-Control-Request-Headers") &&
+    request.headers.has("Origin")
+  );
+};
+
+/**
+ * Sets CORS headers.
+ * @param request incoming request
+ * @param response request response
+ */
+export const cors = async (
+  request: Request,
+  next: (request: Request) => Promise<Response>
+): Promise<Response> => {
+  const corsHeaders: HeadersInit = {
+    "Access-Control-Allow-Origin": "http://localhost:4200",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE",
+    "Access-Control-Allow-Headers": "content-type",
+    "Access-Control-Allow-Credentials": "true",
+  };
+
+  if (isCorsPreflight(request)) {
+    return new Response("", {
+      status: 214,
+      headers: {
+        ...corsHeaders,
+        Connection: "keep-alive",
+      },
+    });
+  }
+
+  const response = await next(request);
+
+  Object.entries(corsHeaders).forEach(([header, value]) => {
+    response.headers.set(header, value);
+  });
+
+  return response;
 };
 
 /**

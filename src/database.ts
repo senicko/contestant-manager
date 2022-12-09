@@ -1,5 +1,7 @@
 import { Database } from "bun:sqlite";
 
+export type Entry<T> = T & { id: number };
+
 export const setupDatabaseConnection = () => {
   const db = Database.open("db.sqlite");
 

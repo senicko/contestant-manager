@@ -24,9 +24,10 @@ export const withAuth =
     // FIXME: handle this error
     if (!userSession) return error(401, "");
 
+    // FIXME: use .get() when it will be working as expected
     const user: User | null = db
       .query("SELECT * FROM trainers WHERE id = ?")
-      .get(userSession.userId);
+      .all(userSession.userId)[0];
 
     if (!user) return error(404, "User does not exist.");
 
@@ -37,11 +38,12 @@ export const withAuth =
 const register: Handler = async (request) => {
   const { name, email, password } = await request.json<Omit<User, "id">>();
 
+  // FIXME: use .get() when it will be working as expected
   const user: User | null = db
     .query(
       "INSERT OR IGNORE INTO trainers (name, email, password) VALUES (?, ?, ?) RETURNING *"
     )
-    .get(name, email, password);
+    .all(name, email, password)[0];
 
   if (!user)
     return Response.json({ error: "Email already taken" }, { status: 400 });
@@ -65,9 +67,10 @@ const login: Handler = async (request) => {
     Pick<User, "email" | "password">
   >();
 
+  // FIXME: use .get() when it will be working as expected
   const user: User | null = db
     .query("SELECT * FROM trainers WHERE email = ?")
-    .get(email);
+    .all(email)[0];
 
   if (!user || user.password !== password)
     return Response.json({ error: "Invalid credentials" }, { status: 400 });
@@ -88,16 +91,7 @@ const login: Handler = async (request) => {
 const me: Handler = withAuth((user) => async () => Response.json(user));
 
 export const authHandlers: Route[] = [
-  {
-    path: "/register",
-    POST: register,
-  },
-  {
-    path: "/login",
-    POST: login,
-  },
-  {
-    path: "/me",
-    GET: me,
-  },
+  { path: "/register", POST: register },
+  { path: "/login", POST: login },
+  { path: "/me", GET: me },
 ];

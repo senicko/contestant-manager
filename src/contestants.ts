@@ -1,11 +1,11 @@
 import { Route } from "./http";
 import { withAuth } from "./auth";
 import { db } from "./database";
+import type { Entry } from "./database";
 
 type Gender = "man" | "woman";
 
 export interface Contestant {
-  id: number;
   name: string;
   gender: Gender;
   age: number;
@@ -14,7 +14,10 @@ export interface Contestant {
 
 /** Get all contestants */
 const getContestants = withAuth(() => async () => {
-  const contestants: Contestant[] = db.query("SELECT * FROM contestants").all();
+  const contestants: Entry<Contestant>[] = db
+    .query("SELECT * FROM contestants")
+    .all();
+
   return Response.json(contestants);
 });
 
@@ -24,11 +27,12 @@ const createContestant = withAuth(() => async (request) => {
     Omit<Contestant, "id">
   >();
 
-  const contestant: Contestant = db
+  // FIXME: use .get() when it will be working as expected
+  const contestant: Entry<Contestant> = db
     .query(
       "INSERT INTO contestants (name, gender, age, skiLength) VALUES (?, ?, ?, ?) RETURNING *"
     )
-    .get(name, gender, age, skiLength);
+    .all(name, gender, age, skiLength)[0];
 
   return Response.json(contestant, { status: 201 });
 });
@@ -36,7 +40,12 @@ const createContestant = withAuth(() => async (request) => {
 /**  Get specific contestant */
 const getOneContestant = withAuth(() => async (_, params) => {
   const { id } = params;
-  const contestant = db.query("SELECT * FROM contestants WHERE id = ?").get(id);
+
+  // FIXME: use .get() when it will be working as expected
+  const contestant: Entry<Contestant> = db
+    .query("SELECT * FROM contestants WHERE id = ?")
+    .all(id)[0];
+
   return Response.json(contestant);
 });
 
@@ -53,14 +62,6 @@ const deleteContestant = withAuth(() => async (_, params) => {
  * @returns routes for contestants
  */
 export const contestantsHandlers: Route[] = [
-  {
-    path: "/contestants",
-    GET: getContestants,
-    POST: createContestant,
-  },
-  {
-    path: "/contestants/:id",
-    GET: getOneContestant,
-    DELETE: deleteContestant,
-  },
+  { path: "/contestants", GET: getContestants, POST: createContestant },
+  { path: "/contestants/:id", GET: getOneContestant, DELETE: deleteContestant },
 ];
