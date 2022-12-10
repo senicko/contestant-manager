@@ -1,14 +1,13 @@
-import { Handler, parseCookies, Route, setCookie } from "./http";
-import { sessionManager } from "./session";
-import { db } from "./database";
-import { error } from "./http";
-
-type User = {
-  id: number;
-  name: string;
-  email: string;
-  password: string;
-};
+import { Handler, parseCookies, Route } from "../http";
+import { sessionCookie, sessionManager } from "../session";
+import { db, Entry } from "../database";
+import { error } from "../http";
+import {
+  userSchema,
+  User,
+  userCredentailsSchema,
+  serializeUser,
+} from "../models/user";
 
 /**
  * Checks if request is made by authenticated person
@@ -22,67 +21,62 @@ export const withAuth =
     const userSession = sessionManager.get(parseInt(sid));
 
     // FIXME: handle this error
-    if (!userSession) return error(401, "");
+    if (!userSession) return error(401, "User not found");
 
     // FIXME: use .get() when it will be working as expected
     const user: User | null = db
       .query("SELECT * FROM trainers WHERE id = ?")
       .all(userSession.userId)[0];
 
-    if (!user) return error(404, "User does not exist.");
+    if (!user) return error(404, "User does not exist");
 
     return handler(user)(request, params);
   };
 
 /** Registers a new user. */
 const register: Handler = async (request) => {
-  const { name, email, password } = await request.json<Omit<User, "id">>();
+  const validation = await userSchema.safeParseAsync(await request.json());
+  if (!validation.success) return error(400, "Validation error");
+
+  const { name, email, password } = validation.data;
 
   // FIXME: use .get() when it will be working as expected
-  const user: User | null = db
+  const user: Entry<User> | null = db
     .query(
       "INSERT OR IGNORE INTO trainers (name, email, password) VALUES (?, ?, ?) RETURNING *"
     )
     .all(name, email, password)[0];
 
-  if (!user)
-    return Response.json({ error: "Email already taken" }, { status: 400 });
+  if (!user) return error(400, "Email addres is already taken");
 
-  delete user.password;
-  const response = Response.json(user);
-
-  setCookie(response.headers, {
-    name: "sid",
-    value: sessionManager.create(user.id).toString(),
-    expire: new Date(new Date().getTime() + 1000 * 60 * 60 * 24 * 7),
-    httpOnly: true,
-  });
+  const response = Response.json(serializeUser(user));
+  const sessionId = sessionManager.create(user.id);
+  sessionCookie(response.headers, sessionId);
 
   return response;
 };
 
 /** Logs in a user. */
 const login: Handler = async (request) => {
-  const { email, password } = await request.json<
-    Pick<User, "email" | "password">
-  >();
+  const validation = await userCredentailsSchema.safeParseAsync(
+    await request.json()
+  );
+
+  if (!validation.success) return error(400, "Validation error");
+
+  const { email, password } = validation.data;
 
   // FIXME: use .get() when it will be working as expected
-  const user: User | null = db
+  const user: Entry<User> | null = db
     .query("SELECT * FROM trainers WHERE email = ?")
     .all(email)[0];
 
   if (!user || user.password !== password)
     return Response.json({ error: "Invalid credentials" }, { status: 400 });
 
-  const response = Response.json(user);
-
-  setCookie(response.headers, {
-    name: "sid",
-    value: sessionManager.create(user.id).toString(),
-    expire: new Date(new Date().getTime() + 1000 * 60 * 60 * 24 * 7),
-    httpOnly: true,
-  });
+  const response = Response.json(serializeUser(user));
+  const sessionId = sessionManager.create(user.id);
+  sessionCookie(response.headers, sessionId);
 
   return response;
 };

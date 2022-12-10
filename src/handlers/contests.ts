@@ -1,35 +1,27 @@
-import { error, Route } from "./http";
+import { error, Route } from "../http";
 import { withAuth } from "./auth";
-import { Contestant } from "./contestants";
-import { db } from "./database";
-import type { Entry } from "./database";
-
-interface Contest {
-  name: string;
-  contestants: Entry<Contestant>[];
-}
+import { db, Entry } from "../database";
+import { Contest, contestSchema } from "../models/contest";
 
 /** Retrieves all created contests */
 const getContests = withAuth(() => async (request) => {
-  const contests: Entry<Contest>[] = db
-    .query("SELEimage.pngCT * FROM contests")
-    .all();
-
+  const contests: Entry<Contest>[] = db.query("SELECT * FROM contests").all();
   return Response.json(contests);
 });
 
 /** Creates a new contest */
 const createContest = withAuth(() => async (request) => {
-  const { name } = await request.json<Omit<Contest, "id">>();
+  const validation = await contestSchema.safeParseAsync(await request.json());
+  if (!validation.success) return error(400, "Vlidation error.");
+
+  const { name } = validation.data;
 
   // FIXME: use .get() when it will be working as expected
   const contest: Entry<Contest> = db
     .query("INSERT INTO contests (name) VALUES (?) RETURNING *")
     .all(name)[0];
 
-  contest.contestants = [];
-
-  return Response.json(contest, { status: 201 });
+  return Response.json({ ...contest, contestants: [] }, { status: 201 });
 });
 
 const getOneContest = withAuth(() => async (_, params) => {

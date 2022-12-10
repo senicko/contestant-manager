@@ -1,16 +1,7 @@
-import { Route } from "./http";
+import { Route, error } from "../http";
 import { withAuth } from "./auth";
-import { db } from "./database";
-import type { Entry } from "./database";
-
-type Gender = "man" | "woman";
-
-export interface Contestant {
-  name: string;
-  gender: Gender;
-  age: number;
-  skiLength: number;
-}
+import { db, Entry } from "../database";
+import { Contestant, contestantSchema } from "../models/contestant";
 
 /** Get all contestants */
 const getContestants = withAuth(() => async () => {
@@ -23,16 +14,20 @@ const getContestants = withAuth(() => async () => {
 
 /** Create a new contestant */
 const createContestant = withAuth(() => async (request) => {
-  const { name, gender, age, skiLength } = await request.json<
-    Omit<Contestant, "id">
-  >();
+  const validation = await contestantSchema.safeParseAsync(
+    await request.json()
+  );
+
+  if (!validation.success) return error(400, "Validation error");
+
+  const { name, gender, birthDate, skiLength } = validation.data;
 
   // FIXME: use .get() when it will be working as expected
   const contestant: Entry<Contestant> = db
     .query(
-      "INSERT INTO contestants (name, gender, age, skiLength) VALUES (?, ?, ?, ?) RETURNING *"
+      "INSERT INTO contestants (name, gender, birth_date, skiLength) VALUES (?, ?, ?, ?) RETURNING *"
     )
-    .all(name, gender, age, skiLength)[0];
+    .all(name, gender, birthDate.toUTCString(), skiLength)[0];
 
   return Response.json(contestant, { status: 201 });
 });

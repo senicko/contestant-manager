@@ -10,7 +10,7 @@ export const setupDatabaseConnection = () => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       gender TEXT CHECK(gender in ('male', 'famale')) NOT NULL,
-      age INT NOT NULL,
+      birht_date DATE NOT NULL, 
       skiLength REAL NOT NULL
     );
   `);
