@@ -21,14 +21,17 @@ export const withAuth =
     const userSession = sessionManager.get(parseInt(sid));
 
     // FIXME: handle this error
-    if (!userSession) return error(401, "User not found");
+    if (!userSession) return error(401, "Session not found");
 
     // FIXME: use .get() when it will be working as expected
     const user: User | null = db
       .query("SELECT * FROM trainers WHERE id = ?")
       .all(userSession.userId)[0];
 
-    if (!user) return error(404, "User does not exist");
+    if (!user) {
+      sessionManager.remove(userSession.sessionId);
+      return error(404, "User does not exist");
+    }
 
     return handler(user)(request, params);
   };
